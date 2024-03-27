@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Color Detection</title>
+<style>
+    #video {
+        display: none; /* Hide video element */
+    }
+    #canvas {
+        display: block;
+        margin: auto;
+    }
+    #colorList {
+        font-size: 16px;
+        margin-top: 20px;
+    }
+</style>
+</head>
+<body>
+<video id="video" autoplay playsinline></video>
+<canvas id="canvas" width="640" height="480"></canvas>
+<div id="colorList">Detected Colors: </div>
+
+<script src="https://cdn.jsdelivr.net/npm/color-name-list@1.0.0"></script>
+<script>
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const colorListDiv = document.getElementById('colorList');
+
+    // Access the camera and stream video
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } }) // Rear-facing camera
+        .then(stream => {
+            video.srcObject = stream;
+        })
+        .catch(error => {
+            console.error('Error accessing camera:', error);
+        });
+
+    // Process each frame from the video feed
+    video.addEventListener('play', function() {
+        const timer = setInterval(() => {
+            if (!video.paused && !video.ended) {
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const detectedColors = detectColors(imageData.data);
+                colorListDiv.innerText = 'Detected Colors: ' + detectedColors.join(', ');
+            } else {
+                clearInterval(timer);
+            }
+        }, 1000 / 30); // Update every 30 frames per second
+    });
+
+    // Function to detect colors from image data
+    function detectColors(data) {
+        const colorNames = require('color-name-list');
+        const colorCount = {};
+        for (let i = 0; i < data.length; i += 4) {
+            const r = data[i];
+            const g = data[i + 1];
+            const b = data[i + 2];
+            const colorName = getColorName(r, g, b);
+            if (colorName) {
+                colorCount[colorName] = true;
+            }
+        }
+        return Object.keys(colorCount);
+    }
+
+    // Function to get color name from RGB
+    function getColorName(r, g, b) {
+        const colorNames = require('color-name-list');
+        const color = { r, g, b };
+        for (let i = 0; i < colorNames.length; i++) {
+            const name = colorNames[i];
+            if (colorMatches(color, name.rgb)) {
+                return name.name;
+            }
+        }
+        return null;
+    }
+
+    // Function to check if color matches
+    function colorMatches(color1, color2) {
+        return color1.r === color2[0] && color1.g === color2[1] && color1.b === color2[2];
+    }
+</script>
+</body>
+</html>
